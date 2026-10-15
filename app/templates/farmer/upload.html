@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}Diagnose a leaf{% endblock %}
+{% block content %}
+<div class="container py-5" style="max-width: 640px;">
+  <div class="text-center mb-4">
+    <h2>Diagnose a leaf</h2>
+    <p class="text-muted">Take a clear, well-lit photo of the affected leaf for the most accurate result.</p>
+  </div>
+
+  <div class="cg-card p-4 p-md-5">
+    <form method="POST" enctype="multipart/form-data" novalidate>
+      {{ form.hidden_tag() }}
+      <label for="leaf_image" class="cg-dropzone d-block mb-3">
+        <img id="image-preview" class="d-none mb-3 rounded" style="max-height:220px;object-fit:cover;" alt="Preview">
+        <div>
+          <i class="bi bi-cloud-arrow-up"></i>
+          <p class="mb-1 mt-2 fw-semibold" id="dropzone-text">Click to take or upload a photo</p>
+          <p class="text-muted small mb-0">JPG or PNG, up to 8&nbsp;MB</p>
+        </div>
+      </label>
+      {{ form.leaf_image(class="d-none", id="leaf_image", accept="image/*", capture="environment") }}
+      {% for e in form.leaf_image.errors %}<div class="text-danger small mb-2">{{ e }}</div>{% endfor %}
+      {{ form.submit(class="btn cg-btn-primary w-100 btn-lg") }}
+    </form>
+  </div>
+
+  <div class="row g-3 mt-4">
+    <div class="col-4 text-center"><i class="bi bi-brightness-high text-success"></i><p class="small text-muted mb-0">Good lighting</p></div>
+    <div class="col-4 text-center"><i class="bi bi-crop text-success"></i><p class="small text-muted mb-0">Fill the frame</p></div>
+    <div class="col-4 text-center"><i class="bi bi-hand-index-thumb text-success"></i><p class="small text-muted mb-0">Hold steady</p></div>
+  </div>
+</div>
+{% endblock %}
