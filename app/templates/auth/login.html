@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}Log in{% endblock %}
+{% block content %}
+<div class="container cg-auth-wrap">
+  <div class="row cg-auth-card mx-auto" style="max-width: 780px;">
+    <div class="col-md-5 cg-auth-side">
+      <img src="{{ url_for('static', filename='img/leaf-icon.svg') }}" width="40" height="40" alt="">
+      <h3 class="text-white mt-3">Welcome back</h3>
+      <p style="color: rgba(255,255,255,.85);">Log in to diagnose a leaf, review trends, or manage the system &mdash; whatever your role needs.</p>
+    </div>
+    <div class="col-md-7 p-4 p-md-5">
+      <h4 class="mb-4">Log in to CropGuard</h4>
+      <form method="POST" novalidate>
+        {{ form.hidden_tag() }}
+        <div class="mb-3">
+          {{ form.username.label(class="form-label") }}
+          {{ form.username(class="form-control" + (" is-invalid" if form.username.errors else ""), autofocus=true) }}
+          {% for e in form.username.errors %}<div class="invalid-feedback">{{ e }}</div>{% endfor %}
+        </div>
+        <div class="mb-3">
+          {{ form.password.label(class="form-label") }}
+          {{ form.password(class="form-control" + (" is-invalid" if form.password.errors else "")) }}
+          {% for e in form.password.errors %}<div class="invalid-feedback">{{ e }}</div>{% endfor %}
+        </div>
+        {{ form.submit(class="btn cg-btn-primary w-100 mt-2") }}
+      </form>
+      <p class="text-center text-muted mt-3 mb-0">New here? <a href="{{ url_for('auth.register') }}">Create an account</a></p>
+    </div>
+  </div>
+</div>
+{% endblock %}
