@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 520 460">
+  <defs>
+    <linearGradient id="leafG" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#2c8a4f"/>
+      <stop offset="1" stop-color="#123524"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="50%" cy="35%" r="65%">
+      <stop offset="0" stop-color="#ffffff" stop-opacity=".9"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <circle cx="260" cy="220" r="200" fill="#e7f3ea"/>
+  <circle cx="260" cy="220" r="200" fill="url(#glow)"/>
+
+  <!-- main leaf -->
+  <path fill="url(#leafG)" d="M330 70C230 70 130 140 130 260c0 26 20 46 46 46 26 0 46-20 46-46 0-30 10-58 28-80-6 30-4 58 8 82 44-12 84-44 106-86 30-52 40-100 40-120 0 0-40-6-74 14z"/>
+  <path stroke="#eaf6ec" stroke-width="6" stroke-linecap="round" fill="none" d="M186 296C216 246 260 196 316 150"/>
+
+  <!-- disease spots -->
+  <circle cx="240" cy="230" r="9" fill="#8a5a2b" opacity=".55"/>
+  <circle cx="270" cy="255" r="5" fill="#8a5a2b" opacity=".5"/>
+  <circle cx="295" cy="215" r="6" fill="#8a5a2b" opacity=".45"/>
+
+  <!-- magnifier / scan -->
+  <g transform="translate(300,255)">
+    <circle cx="0" cy="0" r="70" fill="#ffffff" stroke="#e8a13d" stroke-width="8"/>
+    <line x1="48" y1="48" x2="100" y2="100" stroke="#e8a13d" stroke-width="14" stroke-linecap="round"/>
+    <circle cx="0" cy="0" r="70" fill="none" stroke="#2c8a4f" stroke-width="2" stroke-dasharray="6 8"/>
+    <path d="M-30 10 C -10 -25, 20 -25, 34 5" fill="none" stroke="#2c8a4f" stroke-width="5" stroke-linecap="round"/>
+    <circle cx="-8" cy="0" r="5" fill="#8a5a2b"/>
+    <circle cx="14" cy="14" r="4" fill="#8a5a2b"/>
+  </g>
+
+  <!-- floating confidence chip -->
+  <g transform="translate(70,80)">
+    <rect x="0" y="0" width="150" height="52" rx="16" fill="#123524"/>
+    <text x="18" y="22" font-family="Poppins, sans-serif" font-size="12" fill="#e8a13d" font-weight="700">EARLY BLIGHT</text>
+    <text x="18" y="40" font-family="Inter, sans-serif" font-size="11" fill="#e7f3ea">94% confidence</text>
+  </g>
+</svg>
