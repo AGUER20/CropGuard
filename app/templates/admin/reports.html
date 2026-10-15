@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}Reports{% endblock %}
+{% block content %}
+<div class="container py-4">
+  <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+    <h2 class="mb-0">Detection activity report</h2>
+    <a href="{{ url_for('admin.export_report_csv') }}" class="btn cg-btn-primary"><i class="bi bi-download"></i> Export CSV</a>
+  </div>
+
+  <div class="row g-3 mb-4">
+    <div class="col-sm-4"><div class="cg-stat"><div class="num">{{ recent_predictions }}</div><div class="label">Predictions (last {{ window_days }} days)</div></div></div>
+    <div class="col-sm-4"><div class="cg-stat"><div class="num">{{ avg_rating }}/5</div><div class="label">Avg. farmer rating</div></div></div>
+    <div class="col-sm-4"><div class="cg-stat"><div class="num">{{ flagged_incorrect }}</div><div class="label">Flagged as incorrect</div></div></div>
+  </div>
+
+  <div class="cg-card p-4">
+    <h5 class="mb-3">Detections by disease</h5>
+    {% if by_disease %}
+    <div class="table-responsive">
+      <table class="table cg-table">
+        <thead><tr><th>Disease</th><th>Detections</th></tr></thead>
+        <tbody>
+        {% for name, count in by_disease %}
+          <tr><td>{{ name }}</td><td>{{ count }}</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="cg-empty">No detection activity yet.</div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
