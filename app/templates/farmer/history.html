@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Diagnosis history{% endblock %}
+{% block content %}
+<div class="container py-4">
+  <h2 class="mb-4">Diagnosis history</h2>
+  <div class="cg-card p-4">
+    {% if records.items %}
+    <div class="table-responsive">
+      <table class="table cg-table align-middle">
+        <thead><tr><th>Photo</th><th>Disease</th><th>Confidence</th><th>Date</th><th></th></tr></thead>
+        <tbody>
+        {% for r in records.items %}
+          <tr>
+            <td><img src="{{ url_for('static', filename=r.image_path) }}" width="48" height="48" style="object-fit:cover;border-radius:8px;"></td>
+            <td>{{ r.disease.name if r.disease else "Unclassified" }}</td>
+            <td><span class="cg-badge-soft">{{ r.confidence_percent() }}%</span></td>
+            <td class="text-muted">{{ r.predicted_at.strftime("%d %b %Y") }}</td>
+            <td><a href="{{ url_for('farmer.result', prediction_id=r.id) }}" class="btn btn-sm cg-btn-outline">View</a></td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="cg-empty">
+      <i class="bi bi-clock-history" style="font-size:2rem;"></i>
+      <p class="mt-2 mb-0">No diagnoses yet.</p>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
