@@ -49,3 +49,40 @@ def test_non_leaf_upload_never_creates_diagnosis(app, client, db, tmp_path, monk
     assert b"Upload a clear, close-up photo of a plant leaf" in response.data
     assert PredictionRecord.query.count() == 0
     assert list(upload_dir.iterdir()) == []
+
+
+def test_model_not_leaf_prediction_is_rejected(app, client, db, tmp_path, monkeypatch):
+    upload_dir = tmp_path / "uploads"
+    upload_dir.mkdir()
+    app.config["UPLOAD_FOLDER"] = str(upload_dir)
+
+    farmer = User(
+        full_name="Test Farmer",
+        username="modeloutputfarmer",
+        email="modeloutputfarmer@example.com",
+        role=Role.FARMER,
+    )
+    farmer.set_password("FarmerPass1")
+    db.session.add(farmer)
+    db.session.commit()
+    client.post("/auth/login", data={"username": "modeloutputfarmer", "password": "FarmerPass1"})
+
+    monkeypatch.setattr("app.farmer.routes.looks_like_leaf_photo", lambda image_path: True)
+    monkeypatch.setattr(
+        "app.farmer.routes.ml_inference.predict",
+        lambda *args, **kwargs: ("Reject", 0.99, 1),
+    )
+    image_bytes = io.BytesIO()
+    Image.new("RGB", (224, 224), color=(50, 155, 65)).save(image_bytes, format="PNG")
+    image_bytes.seek(0)
+
+    response = client.post(
+        "/farmer/diagnose",
+        data={"leaf_image": (image_bytes, "green-object.png")},
+        content_type="multipart/form-data",
+        follow_redirects=True,
+    )
+
+    assert b"This image is not a supported plant diagnosis" in response.data
+    assert PredictionRecord.query.count() == 0
+    assert list(upload_dir.iterdir()) == []

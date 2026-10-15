@@ -143,7 +143,32 @@ transparently uses a deterministic demo predictor (same photo → same
 result) so every screen, route, and database table can be exercised while
 the model is still being trained (Spiral 2/3 of the methodology).
 
-To go live with real predictions:
+To train the supported diagnoses and an explicit reject class, run:
+
+```bash
+python train_model.py --epochs 8 --batch-size 32 --max-per-class 1500
+```
+
+The first run fetches the selected PlantVillage images with HTTP range reads,
+plus the public Beans and CIFAR-10 datasets. PlantVillage leaves are grouped
+before the 75/12.5/12.5 train/validation/test split to avoid the same leaf
+appearing in multiple sets. Beans supplies angular leaf spot; unsupported
+apple scab, potato blights, tomato leaf mold, and CIFAR-10 objects are trained
+as `Reject`. The default cap
+keeps CPU training manageable; pass `--max-per-class 0` to use every
+available image. ImageNet-pretrained MobileNetV2 uses augmentation, class
+weights, early stopping, and best-checkpoint saving. The script prints test
+accuracy, per-class precision/recall, and a confusion matrix. Trained weights
+and class mapping are written to the paths configured in `.env`
+(`MODEL_PATH` and `CLASS_INDEX_PATH`). These artifacts are ignored by Git,
+so train them locally after cloning.
+
+The app rejects the model's `Reject` class instead of saving a diagnosis.
+The existing image-content screen is an additional guard; neither it nor a
+closed-set classifier can guarantee rejection of every possible out-of-
+distribution image, so review test-set metrics before relying on diagnoses.
+
+To use an independently trained compatible model instead:
 
 1. Train/fine-tune MobileNetV2 (TensorFlow/Keras) on your labelled dataset.
 2. Save the model: `model.save("model/mobilenetv2_cropguard.h5")`.

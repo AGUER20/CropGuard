@@ -67,6 +67,11 @@ def diagnose():
             image_array, save_path, current_app.config, fallback_names
         )
 
+        if predicted_name == "Reject":
+            os.remove(save_path)
+            flash("This image is not a supported plant diagnosis. Please upload a clear leaf photo.", "warning")
+            return redirect(url_for("farmer.diagnose"))
+
         disease = DiseaseClass.query.filter_by(name=predicted_name).first()
 
         record = PredictionRecord(
