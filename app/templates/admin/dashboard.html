@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}Admin dashboard{% endblock %}
+{% block content %}
+<div class="container py-4">
+  <h2 class="mb-1">System overview</h2>
+  <p class="text-muted mb-4">Account oversight and detection activity, at a glance.</p>
+
+  <div class="row g-3 mb-4">
+    <div class="col-6 col-md-4 col-lg-2"><div class="cg-stat"><div class="num">{{ stats.total_users }}</div><div class="label">Total users</div></div></div>
+    <div class="col-6 col-md-4 col-lg-2"><div class="cg-stat"><div class="num">{{ stats.total_farmers }}</div><div class="label">Farmers</div></div></div>
+    <div class="col-6 col-md-4 col-lg-2"><div class="cg-stat"><div class="num">{{ stats.total_researchers }}</div><div class="label">Researchers</div></div></div>
+    <div class="col-6 col-md-4 col-lg-2"><div class="cg-stat"><div class="num">{{ stats.pending_researchers }}</div><div class="label">Pending approval</div></div></div>
+    <div class="col-6 col-md-4 col-lg-2"><div class="cg-stat"><div class="num">{{ stats.total_predictions }}</div><div class="label">Predictions</div></div></div>
+    <div class="col-6 col-md-4 col-lg-2"><div class="cg-stat"><div class="num">{{ stats.total_diseases }}</div><div class="label">Disease classes</div></div></div>
+  </div>
+
+  <div class="row g-4">
+    <div class="col-md-6">
+      <a href="{{ url_for('admin.users') }}" class="text-decoration-none">
+        <div class="cg-card h-100 p-4">
+          <div class="card-icon mb-3"><i class="bi bi-people"></i></div>
+          <h5 class="text-dark">Manage user accounts</h5>
+          <p class="text-muted mb-0">Approve researchers, activate/deactivate or remove accounts.</p>
+        </div>
+      </a>
+    </div>
+    <div class="col-md-6">
+      <a href="{{ url_for('admin.reports') }}" class="text-decoration-none">
+        <div class="cg-card h-100 p-4">
+          <div class="card-icon mb-3"><i class="bi bi-bar-chart"></i></div>
+          <h5 class="text-dark">Detection activity reports</h5>
+          <p class="text-muted mb-0">Generate and export reports summarising system usage.</p>
+        </div>
+      </a>
+    </div>
+  </div>
+</div>
+{% endblock %}
