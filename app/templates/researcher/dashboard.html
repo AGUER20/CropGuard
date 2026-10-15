@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}Researcher dashboard{% endblock %}
+{% block content %}
+<div class="container py-4">
+  <h2 class="mb-1">Welcome, {{ current_user.full_name.split()[0] }}</h2>
+  <p class="text-muted mb-4">Elevated access: disease library, prediction trends, and dataset growth.</p>
+
+  <div class="row g-3 mb-4">
+    <div class="col-sm-4"><div class="cg-stat"><div class="num">{{ disease_count }}</div><div class="label">Disease classes</div></div></div>
+    <div class="col-sm-4"><div class="cg-stat"><div class="num">{{ prediction_count }}</div><div class="label">Total predictions</div></div></div>
+    <div class="col-sm-4"><div class="cg-stat"><div class="num">{{ pending_training_images }}</div><div class="label">Pending training images</div></div></div>
+  </div>
+
+  <div class="row g-4">
+    <div class="col-md-4">
+      <a href="{{ url_for('researcher.library') }}" class="text-decoration-none">
+        <div class="cg-card h-100 p-4">
+          <div class="card-icon mb-3"><i class="bi bi-journal-medical"></i></div>
+          <h5 class="text-dark">Disease library</h5>
+          <p class="text-muted mb-0">Browse every disease class and its treatment guide.</p>
+        </div>
+      </a>
+    </div>
+    <div class="col-md-4">
+      <a href="{{ url_for('researcher.trends') }}" class="text-decoration-none">
+        <div class="cg-card h-100 p-4">
+          <div class="card-icon mb-3"><i class="bi bi-graph-up"></i></div>
+          <h5 class="text-dark">Prediction trends</h5>
+          <p class="text-muted mb-0">See which diseases are being detected most.</p>
+        </div>
+      </a>
+    </div>
+    <div class="col-md-4">
+      <a href="{{ url_for('researcher.upload_training') }}" class="text-decoration-none">
+        <div class="cg-card h-100 p-4">
+          <div class="card-icon mb-3"><i class="bi bi-cloud-upload"></i></div>
+          <h5 class="text-dark">Upload training images</h5>
+          <p class="text-muted mb-0">Grow the dataset used to retrain MobileNetV2.</p>
+        </div>
+      </a>
+    </div>
+  </div>
+</div>
+{% endblock %}
