@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}Upload training images{% endblock %}
+{% block content %}
+<div class="container py-4" style="max-width: 640px;">
+  <h2 class="mb-4">Upload training images</h2>
+
+  <div class="cg-card p-4 mb-4">
+    <form method="POST" enctype="multipart/form-data" novalidate>
+      {{ form.hidden_tag() }}
+      <div class="mb-3">
+        {{ form.disease_class_id.label(class="form-label") }}
+        {{ form.disease_class_id(class="form-select") }}
+      </div>
+      <div class="mb-3">
+        {{ form.image.label(class="form-label") }}
+        {{ form.image(class="form-control" + (" is-invalid" if form.image.errors else "")) }}
+        {% for e in form.image.errors %}<div class="invalid-feedback">{{ e }}</div>{% endfor %}
+      </div>
+      {{ form.submit(class="btn cg-btn-primary") }}
+    </form>
+  </div>
+
+  <h5 class="mb-3">Your recent uploads</h5>
+  <div class="row g-3">
+    {% for t in recent_uploads %}
+    <div class="col-4 col-md-3">
+      <img src="{{ url_for('static', filename=t.image_path) }}" class="w-100 rounded" style="aspect-ratio:1;object-fit:cover;">
+      <p class="small text-muted mb-0 mt-1">{{ t.disease.name }}</p>
+      <span class="cg-badge-soft">{{ t.status }}</span>
+    </div>
+    {% else %}
+    <p class="text-muted">No uploads yet.</p>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}
