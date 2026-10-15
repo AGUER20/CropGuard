@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% block title %}Create account{% endblock %}
+{% block content %}
+<div class="container cg-auth-wrap">
+  <div class="row cg-auth-card mx-auto" style="max-width: 900px;">
+    <div class="col-md-5 cg-auth-side">
+      <img src="{{ url_for('static', filename='img/leaf-icon.svg') }}" width="40" height="40" alt="">
+      <h3 class="text-white mt-3">Join CropGuard</h3>
+      <p style="color: rgba(255,255,255,.85);">
+        Farmers get instant diagnoses. Researchers and agricultural officers get elevated
+        access to the disease library, trend data and dataset uploads once approved by an
+        administrator.
+      </p>
+      <ul class="list-unstyled mt-3" style="color: rgba(255,255,255,.85);">
+        <li class="mb-2"><i class="bi bi-check2-circle"></i> Free to use</li>
+        <li class="mb-2"><i class="bi bi-check2-circle"></i> Works on any smartphone</li>
+        <li><i class="bi bi-check2-circle"></i> Passwords are hashed &amp; never stored in plain text</li>
+      </ul>
+    </div>
+    <div class="col-md-7 p-4 p-md-5">
+      <h4 class="mb-4">Create your account</h4>
+      <form method="POST" novalidate>
+        {{ form.hidden_tag() }}
+        <div class="mb-3">
+          {{ form.full_name.label(class="form-label") }}
+          {{ form.full_name(class="form-control" + (" is-invalid" if form.full_name.errors else "")) }}
+          {% for e in form.full_name.errors %}<div class="invalid-feedback">{{ e }}</div>{% endfor %}
+        </div>
+        <div class="row">
+          <div class="col-sm-6 mb-3">
+            {{ form.username.label(class="form-label") }}
+            {{ form.username(class="form-control" + (" is-invalid" if form.username.errors else "")) }}
+            {% for e in form.username.errors %}<div class="invalid-feedback">{{ e }}</div>{% endfor %}
+          </div>
+          <div class="col-sm-6 mb-3">
+            {{ form.email.label(class="form-label") }}
+            {{ form.email(class="form-control" + (" is-invalid" if form.email.errors else "")) }}
+            {% for e in form.email.errors %}<div class="invalid-feedback">{{ e }}</div>{% endfor %}
+          </div>
+        </div>
+        <div class="mb-3">
+          {{ form.role.label(class="form-label") }}
+          {{ form.role(class="form-select") }}
+        </div>
+        <div class="row">
+          <div class="col-sm-6 mb-3">
+            {{ form.password.label(class="form-label") }}
+            {{ form.password(class="form-control" + (" is-invalid" if form.password.errors else "")) }}
+            {% for e in form.password.errors %}<div class="invalid-feedback">{{ e }}</div>{% endfor %}
+          </div>
+          <div class="col-sm-6 mb-3">
+            {{ form.confirm_password.label(class="form-label") }}
+            {{ form.confirm_password(class="form-control" + (" is-invalid" if form.confirm_password.errors else "")) }}
+            {% for e in form.confirm_password.errors %}<div class="invalid-feedback">{{ e }}</div>{% endfor %}
+          </div>
+        </div>
+        {{ form.submit(class="btn cg-btn-primary w-100 mt-2") }}
+      </form>
+      <p class="text-center text-muted mt-3 mb-0">Already have an account? <a href="{{ url_for('auth.login') }}">Log in</a></p>
+    </div>
+  </div>
+</div>
+{% endblock %}
