@@ -35,6 +35,15 @@ def test_leaf_photo_gate_accepts_centered_leaf(tmp_path):
     assert looks_like_leaf_photo(str(image_path))
 
 
+def test_leaf_photo_gate_accepts_brown_diseased_leaf(tmp_path):
+    image = Image.new("RGB", (224, 224), color=(35, 35, 35))
+    ImageDraw.Draw(image).ellipse((25, 45, 199, 179), fill=(125, 90, 40))
+    image_path = tmp_path / "brown-leaf.png"
+    image.save(image_path)
+
+    assert looks_like_leaf_photo(str(image_path))
+
+
 def test_leaf_photo_gate_rejects_car_with_green_background(tmp_path):
     image = Image.new("RGB", (224, 224), color=(30, 105, 40))
     ImageDraw.Draw(image).rectangle((35, 65, 189, 175), fill=(35, 38, 42))
