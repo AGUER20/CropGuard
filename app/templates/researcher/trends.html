@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block title %}Prediction trends{% endblock %}
+{% block content %}
+<div class="container py-4">
+  <h2 class="mb-4">Prediction trends</h2>
+
+  <div class="row g-3 mb-4">
+    <div class="col-sm-4"><div class="cg-stat"><div class="num">{{ total }}</div><div class="label">Total predictions</div></div></div>
+    <div class="col-sm-4"><div class="cg-stat"><div class="num">{{ avg_confidence }}%</div><div class="label">Avg. confidence</div></div></div>
+    <div class="col-sm-4"><div class="cg-stat"><div class="num">{{ labels|length }}</div><div class="label">Diseases detected</div></div></div>
+  </div>
+
+  <div class="cg-card p-4">
+    {% if labels %}
+    <canvas id="trendsChart" height="110"></canvas>
+    {% else %}
+    <div class="cg-empty">
+      <i class="bi bi-graph-up" style="font-size:2rem;"></i>
+      <p class="mt-2 mb-0">No prediction data yet — trends will appear once farmers start diagnosing leaves.</p>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+{% if labels %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+<script>
+  new Chart(document.getElementById('trendsChart'), {
+    type: 'bar',
+    data: {
+      labels: {{ labels|tojson }},
+      datasets: [{
+        label: 'Predictions',
+        data: {{ counts|tojson }},
+        backgroundColor: '#2c8a4f',
+        borderRadius: 8,
+      }]
+    },
+    options: {
+      plugins: { legend: { display: false } },
+      scales: { y: { beginAtZero: true, ticks: { precision: 0 } } }
+    }
+  });
+</script>
+{% endif %}
+{% endblock %}
