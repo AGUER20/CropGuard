@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}Manage users{% endblock %}
+{% block content %}
+<div class="container py-4">
+  <h2 class="mb-4">User accounts</h2>
+  <div class="cg-card p-4">
+    <div class="table-responsive">
+      <table class="table cg-table align-middle">
+        <thead><tr><th>Name</th><th>Username</th><th>Role</th><th>Status</th><th>Joined</th><th class="text-end">Actions</th></tr></thead>
+        <tbody>
+        {% for u in users %}
+          <tr>
+            <td>{{ u.full_name }}</td>
+            <td>{{ u.username }}</td>
+            <td><span class="cg-badge-soft">{{ u.role }}</span></td>
+            <td>
+              {% if u.role == "researcher" and not u.is_approved %}
+                <span class="badge text-bg-warning">Pending approval</span>
+              {% elif not u.is_active_account %}
+                <span class="badge text-bg-secondary">Deactivated</span>
+              {% else %}
+                <span class="badge text-bg-success">Active</span>
+              {% endif %}
+            </td>
+            <td class="text-muted">{{ u.created_at.strftime("%d %b %Y") }}</td>
+            <td class="text-end">
+              <div class="d-flex gap-2 justify-content-end flex-wrap">
+                {% if u.role == "researcher" and not u.is_approved %}
+                <form method="POST" action="{{ url_for('admin.approve_user', user_id=u.id) }}">
+                  <button class="btn btn-sm cg-btn-primary">Approve</button>
+                </form>
+                {% endif %}
+                {% if u.id != current_user.id %}
+                <form method="POST" action="{{ url_for('admin.toggle_active', user_id=u.id) }}">
+                  <button class="btn btn-sm cg-btn-outline">{{ "Deactivate" if u.is_active_account else "Activate" }}</button>
+                </form>
+                <form method="POST" action="{{ url_for('admin.delete_user', user_id=u.id) }}" onsubmit="return confirm('Delete this account? This cannot be undone.');">
+                  <button class="btn btn-sm btn-outline-danger">Delete</button>
+                </form>
+                {% endif %}
+              </div>
+            </td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}
