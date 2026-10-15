@@ -19,6 +19,25 @@ def load_image(image_path: str) -> Image.Image:
     return img.convert("RGB")
 
 
+def looks_like_leaf_photo(image_path: str) -> bool:
+    """Reject images without a prominent, saturated green leaf-like region."""
+    try:
+        image = load_image(image_path)
+    except (OSError, ValueError):
+        return False
+
+    hsv = cv2.cvtColor(np.asarray(image), cv2.COLOR_RGB2HSV)
+    height, width = hsv.shape[:2]
+    margin_y, margin_x = int(height * 0.1), int(width * 0.1)
+    center = hsv[margin_y:height - margin_y, margin_x:width - margin_x]
+    green_mask = cv2.inRange(
+        center,
+        np.array([20, 35, 25], dtype=np.uint8),
+        np.array([100, 255, 255], dtype=np.uint8),
+    )
+    return np.count_nonzero(green_mask) / green_mask.size >= 0.5
+
+
 def resize_and_adjust(image: Image.Image, target_size=(224, 224)) -> np.ndarray:
     """Resize to the model's expected input size and mildly enhance
     contrast/brightness so poorly-lit field photos are more classifiable."""

@@ -16,7 +16,7 @@ from app.extensions import db
 from app.models import DiseaseClass, PredictionRecord, Feedback
 from app.utils.decorators import role_required, allowed_file
 from app.farmer.forms import DiagnoseForm, FeedbackForm
-from app.ml.preprocessing import preprocess_for_inference
+from app.ml.preprocessing import looks_like_leaf_photo, preprocess_for_inference
 from app.ml import inference as ml_inference
 
 farmer_bp = Blueprint("farmer", __name__, template_folder="../templates/farmer")
@@ -51,6 +51,11 @@ def diagnose():
         filename = f"{uuid.uuid4().hex}_{secure_filename(file.filename)}"
         save_path = os.path.join(current_app.config["UPLOAD_FOLDER"], filename)
         file.save(save_path)
+
+        if not looks_like_leaf_photo(save_path):
+            os.remove(save_path)
+            flash("Upload a clear, close-up photo of a plant leaf to get a diagnosis.", "warning")
+            return redirect(url_for("farmer.diagnose"))
 
         # --- preprocessing: resize, colour-adjust, normalise ---
         image_array = preprocess_for_inference(save_path, current_app.config["IMAGE_TARGET_SIZE"])
