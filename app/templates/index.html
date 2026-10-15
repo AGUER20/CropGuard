@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+{% block title %}Home{% endblock %}
+
+{% block content %}
+<section class="cg-hero">
+  <div class="container">
+    <div class="row align-items-center g-5">
+      <div class="col-lg-6">
+        <span class="cg-hero-eyebrow"><i class="bi bi-stars"></i> AI-powered crop health</span>
+        <h1 class="mt-3 mb-3">Diagnose sick plants in seconds, right from your phone.</h1>
+        <p class="cg-hero-sub mb-4">
+          CropGuard uses a fine-tuned MobileNetV2 model to identify plant leaf diseases from a
+          single photo, then hands you clear, actionable treatment advice &mdash; no app install,
+          no lab visit, just a camera and an internet connection.
+        </p>
+        <div class="d-flex flex-wrap gap-3 mb-4">
+          {% if current_user.is_authenticated %}
+            <a href="{{ url_for('farmer.diagnose') if current_user.is_farmer() else url_for('index') }}" class="btn cg-btn-primary btn-lg"><i class="bi bi-camera"></i> Diagnose a leaf</a>
+          {% else %}
+            <a href="{{ url_for('auth.register') }}" class="btn cg-btn-primary btn-lg"><i class="bi bi-arrow-right-circle"></i> Get started free</a>
+            <a href="{{ url_for('auth.login') }}" class="btn cg-btn-outline btn-lg">Log in</a>
+          {% endif %}
+        </div>
+        <div class="row g-3">
+          <div class="col-4"><div class="cg-stat"><div class="num">&lt;3s</div><div class="label">diagnosis time</div></div></div>
+          <div class="col-4"><div class="cg-stat"><div class="num">85%+</div><div class="label">target accuracy</div></div></div>
+          <div class="col-4"><div class="cg-stat"><div class="num">3</div><div class="label">user roles</div></div></div>
+        </div>
+      </div>
+      <div class="col-lg-6 text-center">
+        <img src="{{ url_for('static', filename='img/hero-illustration.svg') }}" class="cg-hero-art" alt="Illustration of a scanned plant leaf with a confidence score">
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="container py-5">
+  <div class="text-center mb-5">
+    <h2 class="cg-section-title">How CropGuard works</h2>
+    <p class="cg-section-sub">From photo to treatment advice in four steps.</p>
+  </div>
+  <div class="row g-4">
+    {% set steps = [
+      ("bi-camera", "1. Capture", "Take or upload a photo of a sick leaf from any smartphone or computer."),
+      ("bi-magic", "2. Preprocess", "The image is auto-resized, colour-adjusted and normalised for the model."),
+      ("bi-cpu", "3. Classify", "A fine-tuned MobileNetV2 model returns a disease name and confidence score."),
+      ("bi-clipboard2-pulse", "4. Treat", "You get clear, disease-specific treatment and management advice instantly.")
+    ] %}
+    {% for icon, title, text in steps %}
+    <div class="col-md-6 col-lg-3">
+      <div class="cg-card h-100 p-4">
+        <div class="card-icon mb-3"><i class="bi {{ icon }}"></i></div>
+        <h5>{{ title }}</h5>
+        <p class="text-muted mb-0">{{ text }}</p>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</section>
+
+<section class="container py-5">
+  <div class="text-center mb-5">
+    <h2 class="cg-section-title">Built for three kinds of users</h2>
+    <p class="cg-section-sub">Role-based access keeps every dashboard focused on what matters.</p>
+  </div>
+  <div class="row g-4">
+    <div class="col-md-4">
+      <div class="cg-card h-100 p-4">
+        <div class="card-icon mb-3"><i class="bi bi-person"></i></div>
+        <h5>Farmers</h5>
+        <p class="text-muted">Upload a leaf photo, get an instant diagnosis and treatment advice, and rate the result.</p>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="cg-card h-100 p-4">
+        <div class="card-icon mb-3"><i class="bi bi-mortarboard"></i></div>
+        <h5>Researchers &amp; officers</h5>
+        <p class="text-muted">Browse the disease library, monitor prediction trends, and grow the training dataset.</p>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="cg-card h-100 p-4">
+        <div class="card-icon mb-3"><i class="bi bi-shield-check"></i></div>
+        <h5>Administrators</h5>
+        <p class="text-muted">Manage user accounts and generate reports summarising detection activity.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="container pb-5">
+  <div class="cg-card p-5 text-center" style="background: linear-gradient(160deg, var(--cg-green-900), var(--cg-green-700)); color:#fff;">
+    <h3 class="text-white">Ready to protect your crop?</h3>
+    <p class="mb-4" style="color: rgba(255,255,255,.85);">Create a free account and diagnose your first leaf in under a minute.</p>
+    {% if not current_user.is_authenticated %}
+    <a href="{{ url_for('auth.register') }}" class="btn cg-btn-amber btn-lg">Create free account</a>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}
