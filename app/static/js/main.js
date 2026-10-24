@@ -60,19 +60,4 @@ document.addEventListener("DOMContentLoaded", function () {
     });
   }
 
-  // Star rating widget: clicking a star sets the hidden numeric input.
-  document.querySelectorAll(".cg-star-input").forEach(function (wrap) {
-    var hidden = wrap.querySelector("input[type=hidden], input[type=number]");
-    var stars = wrap.querySelectorAll(".cg-star-btn");
-    stars.forEach(function (star, idx) {
-      star.addEventListener("click", function (e) {
-        e.preventDefault();
-        hidden.value = idx + 1;
-        stars.forEach(function (s, i) {
-          s.classList.toggle("bi-star-fill", i <= idx);
-          s.classList.toggle("bi-star", i > idx);
-        });
-      });
-    });
-  });
 });
