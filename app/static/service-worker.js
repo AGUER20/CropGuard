@@ -1,4 +1,4 @@
-const CACHE_NAME = "cropguard-shell-v1";
+const CACHE_NAME = "cropguard-shell-v2";
 const APP_SHELL = [
   "/static/css/style.css",
   "/static/js/main.js",
