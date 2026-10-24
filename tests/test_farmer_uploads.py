@@ -3,7 +3,7 @@ import io
 import pytest
 from PIL import Image, ImageDraw
 
-from app.models import PredictionRecord, Role, User
+from app.models import Feedback, PredictionRecord, Role, User
 
 
 def test_non_leaf_upload_never_creates_diagnosis(app, client, db, tmp_path, monkeypatch):
@@ -86,3 +86,41 @@ def test_model_not_leaf_prediction_is_rejected(app, client, db, tmp_path, monkey
     assert b"This image is not a supported plant diagnosis" in response.data
     assert PredictionRecord.query.count() == 0
     assert list(upload_dir.iterdir()) == []
+
+
+def test_farmer_feedback_is_saved_for_owned_prediction(client, db):
+    farmer = User(
+        full_name="Feedback Farmer",
+        username="feedbackfarmer",
+        email="feedbackfarmer@example.com",
+        role=Role.FARMER,
+    )
+    farmer.set_password("FarmerPass1")
+    db.session.add(farmer)
+    db.session.commit()
+
+    record = PredictionRecord(
+        user_id=farmer.id,
+        image_path="uploads/test-leaf.png",
+        confidence_score=0.9,
+    )
+    db.session.add(record)
+    db.session.commit()
+
+    client.post("/auth/login", data={"username": farmer.username, "password": "FarmerPass1"})
+    result_page = client.get(f"/farmer/result/{record.id}")
+    assert b'type="radio"' in result_page.data
+    assert b'name="rating"' in result_page.data
+
+    response = client.post(
+        f"/farmer/feedback/{record.id}",
+        data={"prediction_id": str(record.id), "rating": "4", "comment": "Looks right"},
+        follow_redirects=True,
+    )
+
+    assert response.status_code == 200
+    assert b"your feedback helps CropGuard improve" in response.data
+    feedback = Feedback.query.filter_by(prediction_id=record.id).one()
+    assert feedback.user_id == farmer.id
+    assert feedback.rating == 4
+    assert feedback.comment == "Looks right"
