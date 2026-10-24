@@ -107,6 +107,15 @@ cropguard/
    ```
    Open **http://127.0.0.1:5000**.
 
+   ## Progressive web app
+
+   CropGuard can be installed from a supported browser using the browser's
+   install option or the **Install app** button when it is offered. The app shell
+   and an offline screen are cached for repeat visits. Sign-in, diagnosis uploads,
+   dashboards, and saved records still require a network connection; private or
+   user-specific pages are not cached. Service workers require HTTPS in production
+   and work on `localhost` during local development.
+
 ---
 
 ## 3. Running tests

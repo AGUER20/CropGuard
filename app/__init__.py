@@ -4,7 +4,7 @@ Application factory. Wires together the Flask app, extensions, blueprints
 proposal section 3.8.
 """
 import os
-from flask import Flask, render_template
+from flask import Flask, render_template, send_from_directory
 from app.config import config_by_name
 from app.extensions import db, bcrypt, login_manager
 
@@ -43,6 +43,25 @@ def create_app(config_name=None):
     @app.route("/")
     def index():
         return render_template("index.html")
+
+    @app.route("/manifest.webmanifest")
+    def pwa_manifest():
+        return send_from_directory(
+            app.static_folder,
+            "manifest.webmanifest",
+            mimetype="application/manifest+json",
+        )
+
+    @app.route("/service-worker.js")
+    def service_worker():
+        response = send_from_directory(
+            app.static_folder,
+            "service-worker.js",
+            mimetype="application/javascript",
+        )
+        response.headers["Service-Worker-Allowed"] = "/"
+        response.headers["Cache-Control"] = "no-cache"
+        return response
 
     # --- error handlers ---
     @app.errorhandler(403)

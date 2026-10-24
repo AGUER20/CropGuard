@@ -1,5 +1,37 @@
 // CropGuard — small UX helpers (no framework needed).
 document.addEventListener("DOMContentLoaded", function () {
+  var installButton = document.getElementById("install-app");
+  var installPrompt;
+
+  window.addEventListener("beforeinstallprompt", function (event) {
+    event.preventDefault();
+    installPrompt = event;
+    if (installButton) installButton.classList.remove("d-none");
+  });
+
+  if (installButton) {
+    installButton.addEventListener("click", async function () {
+      if (!installPrompt) return;
+      installPrompt.prompt();
+      await installPrompt.userChoice;
+      installPrompt = null;
+      installButton.classList.add("d-none");
+    });
+  }
+
+  window.addEventListener("appinstalled", function () {
+    if (installButton) installButton.classList.add("d-none");
+    installPrompt = null;
+  });
+
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", function () {
+      navigator.serviceWorker.register("/service-worker.js").catch(function (error) {
+        console.error("CropGuard service worker registration failed:", error);
+      });
+    });
+  }
+
   // Animate confidence bars from 0 -> target width.
   document.querySelectorAll(".cg-confidence-fill").forEach(function (el) {
     var target = el.getAttribute("data-width") || "0%";

@@ -1,0 +1,19 @@
+{
+  "id": "/",
+  "name": "CropGuard Plant Health",
+  "short_name": "CropGuard",
+  "description": "Identify crop leaf diseases and find treatment guidance.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f5f8f4",
+  "theme_color": "#123524",
+  "icons": [
+    {
+      "src": "/static/img/leaf-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
