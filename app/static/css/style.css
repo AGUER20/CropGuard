@@ -204,4 +204,11 @@ h1, h2, h3, h4, .display-1, .display-2, .display-3, .navbar-brand {
 .cg-empty {
   text-align: center; padding: 3rem 1rem; color: var(--cg-muted);
 }
-.cg-star { color: var(--cg-amber-500); }
+.cg-star-rating { flex-direction: row-reverse; justify-content: flex-end; }
+.cg-star-radio { position: absolute; width: 1px; height: 1px; opacity: 0; }
+.cg-star-label { color: var(--cg-muted); cursor: pointer; font-size: 1.75rem; line-height: 1; }
+.cg-star-label:hover,
+.cg-star-label:hover ~ .cg-star-label,
+.cg-star-radio:checked + .cg-star-label,
+.cg-star-radio:checked + .cg-star-label ~ .cg-star-label { color: var(--cg-amber-500); }
+.cg-star-radio:focus-visible + .cg-star-label { outline: 2px solid var(--cg-green-700); outline-offset: 3px; }
