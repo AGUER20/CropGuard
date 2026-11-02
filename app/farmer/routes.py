@@ -61,22 +61,32 @@ def diagnose():
         image_array = preprocess_for_inference(save_path, current_app.config["IMAGE_TARGET_SIZE"])
 
         # --- processing: MobileNetV2 inference ---
-        fallback_names = [d.name for d in DiseaseClass.query.order_by(DiseaseClass.model_output_index).all()] \
-            or ["Healthy"]
+        fallback_names = [
+            disease.name
+            for disease in DiseaseClass.query.filter_by(crop_type="Maize")
+            .order_by(DiseaseClass.model_output_index)
+            .all()
+        ] or ["Healthy"]
         predicted_name, confidence, latency_ms = ml_inference.predict(
             image_array, save_path, current_app.config, fallback_names
         )
 
-        if predicted_name == "Reject":
+        disease = DiseaseClass.query.filter_by(
+            name=predicted_name,
+            crop_type="Maize",
+        ).first()
+        if predicted_name == "Reject" or disease is None:
             os.remove(save_path)
-            flash("This image is not a supported plant diagnosis. Please upload a clear leaf photo.", "warning")
+            flash(
+                "This image is not a supported plant diagnosis for maize. "
+                "Please upload a clear maize leaf photo.",
+                "warning",
+            )
             return redirect(url_for("farmer.diagnose"))
-
-        disease = DiseaseClass.query.filter_by(name=predicted_name).first()
 
         record = PredictionRecord(
             user_id=current_user.id,
-            disease_class_id=disease.id if disease else None,
+            disease_class_id=disease.id,
             image_path=f"uploads/{filename}",
             confidence_score=confidence,
             inference_ms=latency_ms,

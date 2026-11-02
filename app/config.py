@@ -32,8 +32,14 @@ class Config:
     MAX_CONTENT_LENGTH = int(os.environ.get("MAX_CONTENT_LENGTH_MB", 8)) * 1024 * 1024
 
     # --- ML model ---
-    MODEL_PATH = os.path.join(BASE_DIR, os.environ.get("MODEL_PATH", "model/mobilenetv2_cropguard.h5"))
-    CLASS_INDEX_PATH = os.path.join(BASE_DIR, os.environ.get("CLASS_INDEX_PATH", "model/class_indices.json"))
+    MODEL_PATH = os.path.join(
+        BASE_DIR,
+        os.environ.get("MODEL_PATH", "model/mobilenetv2_cropguard_maize.h5"),
+    )
+    CLASS_INDEX_PATH = os.path.join(
+        BASE_DIR,
+        os.environ.get("CLASS_INDEX_PATH", "model/class_indices_maize.json"),
+    )
     IMAGE_TARGET_SIZE = (224, 224)  # MobileNetV2 expected input
 
     # --- Pagination ---

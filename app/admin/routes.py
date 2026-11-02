@@ -27,7 +27,7 @@ def dashboard():
         "total_researchers": User.query.filter_by(role=Role.RESEARCHER).count(),
         "pending_researchers": User.query.filter_by(role=Role.RESEARCHER, is_approved=False).count(),
         "total_predictions": PredictionRecord.query.count(),
-        "total_diseases": DiseaseClass.query.count(),
+        "total_diseases": DiseaseClass.query.filter_by(crop_type="Maize").count(),
     }
     return render_template("admin/dashboard.html", stats=stats)
 

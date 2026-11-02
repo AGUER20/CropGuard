@@ -22,7 +22,7 @@ researcher_bp = Blueprint("researcher", __name__, template_folder="../templates/
 @login_required
 @role_required("researcher")
 def dashboard():
-    disease_count = DiseaseClass.query.count()
+    disease_count = DiseaseClass.query.filter_by(crop_type="Maize").count()
     prediction_count = PredictionRecord.query.count()
     pending_training_images = TrainingImage.query.filter_by(status="pending").count()
     return render_template(
@@ -37,7 +37,11 @@ def dashboard():
 @login_required
 @role_required("researcher")
 def library():
-    diseases = DiseaseClass.query.order_by(DiseaseClass.crop_type, DiseaseClass.name).all()
+    diseases = (
+        DiseaseClass.query.filter_by(crop_type="Maize")
+        .order_by(DiseaseClass.name)
+        .all()
+    )
     return render_template("researcher/library.html", diseases=diseases)
 
 
@@ -71,7 +75,10 @@ def trends():
 @role_required("researcher")
 def upload_training():
     form = TrainingImageForm()
-    form.disease_class_id.choices = [(d.id, d.name) for d in DiseaseClass.query.order_by(DiseaseClass.name)]
+    form.disease_class_id.choices = [
+        (d.id, d.name)
+        for d in DiseaseClass.query.filter_by(crop_type="Maize").order_by(DiseaseClass.name)
+    ]
 
     if form.validate_on_submit():
         file = form.image.data
