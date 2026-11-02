@@ -2,18 +2,19 @@
 import argparse
 import io
 import json
+import math
 import os
 import re
 import random
 import shutil
-from collections import defaultdict
+from collections import Counter, defaultdict
+from datetime import datetime, timezone
 from pathlib import Path, PurePosixPath
 from zipfile import ZipFile
 
 import numpy as np
 import requests
 import tensorflow as tf
-from datasets import load_dataset
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
@@ -26,25 +27,21 @@ CLASS_NAMES = [
     "Healthy",
     "Maize Leaf Blight",
     "Maize Common Rust",
-    "Tomato Early Blight",
-    "Tomato Late Blight",
-    "Bean Angular Leaf Spot",
+    "Maize Gray Leaf Spot",
     "Reject",
 ]
 CLASS_INDEX = {name: index for index, name in enumerate(CLASS_NAMES)}
 PLANTVILLAGE_LABELS = {
     "Corn_(maize)___Northern_Leaf_Blight": "Maize Leaf Blight",
     "Corn_(maize)___Common_rust_": "Maize Common Rust",
-    "Tomato___Early_blight": "Tomato Early Blight",
-    "Tomato___Late_blight": "Tomato Late Blight",
+    "Corn_(maize)___Cercospora_leaf_spot Gray_leaf_spot": "Maize Gray Leaf Spot",
     "Corn_(maize)___healthy": "Healthy",
-    "Tomato___healthy": "Healthy",
-    "Apple___Apple_scab": "Reject",
-    "Potato___Early_blight": "Reject",
-    "Potato___Late_blight": "Reject",
-    "Tomato___Leaf_Mold": "Reject",
 }
-PLANTVILLAGE_BASE_URL = "https://huggingface.co/datasets/mohanty/PlantVillage/resolve/main"
+PLANTVILLAGE_REVISION = "9e97599868962bd0079b8db4b7f1efa9185fa1e7"
+PLANTVILLAGE_BASE_URL = (
+    "https://huggingface.co/datasets/mohanty/PlantVillage/resolve/"
+    f"{PLANTVILLAGE_REVISION}"
+)
 PLANTVILLAGE_ARCHIVE_URL = f"{PLANTVILLAGE_BASE_URL}/data.zip?download=true"
 
 
@@ -150,17 +147,18 @@ def _download_text(url):
 
 def _plant_target(class_name):
     target_name = PLANTVILLAGE_LABELS.get(class_name)
+    if target_name is None and not class_name.startswith("Corn_(maize)___"):
+        target_name = "Reject"
     return CLASS_INDEX[target_name] if target_name else None
 
 
 def _leaf_group_id(file_path, leaf_map):
     parts = PurePosixPath(file_path).parts
     class_name, file_name = parts[2], parts[3]
-    image_id = file_name.replace("_final_masked", "")
+    image_id = PurePosixPath(file_name).stem.replace("_final_masked", "")
     if "___" in image_id:
         image_id = image_id.split("___")[-1]
-    image_id = image_id.split("copy")[0]
-    image_id = os.path.splitext(image_id)[0].strip()
+    image_id = re.sub(r"\s+copy(?:\s*\d+)?$", "", image_id, flags=re.IGNORECASE).strip()
     suggestions = leaf_map.get(image_id.lower(), [])
     if not isinstance(suggestions, list):
         suggestions = [suggestions]
@@ -181,6 +179,7 @@ def _split_plantvillage_records(seed):
     leaf_map = leaf_map_response.json()
 
     records_by_class = defaultdict(list)
+    seen_paths = set()
     for source_split in ("train", "test"):
         split_url = f"{PLANTVILLAGE_BASE_URL}/splits/color_{source_split}.txt?download=true"
         for file_path in _download_text(split_url):
@@ -188,11 +187,13 @@ def _split_plantvillage_records(seed):
             if len(parts) != 4 or parts[:2] != ("raw", "color"):
                 continue
             target = _plant_target(parts[2])
-            if target is None:
+            if target is None or file_path in seen_paths:
                 continue
+            seen_paths.add(file_path)
             records_by_class[target].append((file_path, target, _leaf_group_id(file_path, leaf_map)))
 
     split_records = {name: [] for name in ("train", "validation", "test")}
+    split_group_ids = {name: set() for name in split_records}
     rng = random.Random(seed)
     for target, records in records_by_class.items():
         groups = list({record[2] for record in records})
@@ -208,7 +209,16 @@ def _split_plantvillage_records(seed):
             for split_name, selected_groups in groups_by_split.items():
                 if group in selected_groups:
                     split_records[split_name].append((file_path, label))
+                    split_group_ids[split_name].add(group)
                     break
+
+    for left, right in (
+        ("train", "validation"),
+        ("train", "test"),
+        ("validation", "test"),
+    ):
+        if split_group_ids[left] & split_group_ids[right]:
+            raise ValueError(f"PlantVillage leaf groups overlap between {left} and {right}.")
 
     for split_name in split_records:
         if not split_records[split_name]:
@@ -226,61 +236,6 @@ def _limit_plant_records(records, max_per_class, seed):
         rng.shuffle(class_records)
         limited.extend(class_records[:max_per_class] if max_per_class else class_records)
     return limited
-
-
-def _map_hf_labels(dataset, label_column, label_mapping, seed):
-    label_feature = dataset.features[label_column]
-
-    def add_target(example):
-        label_name = label_feature.int2str(int(example[label_column]))
-        target_name = label_mapping.get(label_name, "Reject")
-        return {"target": CLASS_INDEX[target_name]}
-
-    return dataset.map(add_target).shuffle(seed=seed)
-
-
-def _limit_hf_dataset(dataset, max_per_class, seed):
-    if not max_per_class:
-        return dataset
-    indices_by_label = defaultdict(list)
-    for index, label in enumerate(dataset["target"]):
-        indices_by_label[int(label)].append(index)
-
-    selected_indices = []
-    for label, indices in indices_by_label.items():
-        random.Random(seed + label).shuffle(indices)
-        selected_indices.extend(indices[:max_per_class])
-    return dataset.select(selected_indices).shuffle(seed=seed)
-
-
-def _load_hf_datasets(max_per_class, seed):
-    beans = load_dataset("AI-Lab-Makerere/beans")
-    bean_mapping = {
-        "angular_leaf_spot": "Bean Angular Leaf Spot",
-        "healthy": "Healthy",
-        "bean_rust": "Reject",
-    }
-    beans = {
-        split: _limit_hf_dataset(
-            _map_hf_labels(dataset, "labels", bean_mapping, seed), max_per_class, seed
-        )
-        for split, dataset in beans.items()
-    }
-
-    cifar = load_dataset("uoft-cs/cifar10")
-    cifar_training = cifar["train"].train_test_split(test_size=0.15, seed=seed)
-    cifar_splits = {
-        "train": cifar_training["train"],
-        "validation": cifar_training["test"],
-        "test": cifar["test"],
-    }
-    cifar_splits = {
-        split: _limit_hf_dataset(
-            _map_hf_labels(dataset, "label", {}, seed), max_per_class, seed
-        )
-        for split, dataset in cifar_splits.items()
-    }
-    return beans, cifar_splits
 
 
 def _extract_plantvillage(records_by_split, data_dir):
@@ -337,30 +292,6 @@ def _plant_tf_dataset(records):
     )
 
 
-def _hf_tf_dataset(dataset, image_column):
-    def generate():
-        for example in dataset:
-            image = example[image_column].convert("RGB")
-            resized = resize_and_adjust(image, IMAGE_SIZE)
-            values = to_model_input(resized)[0]
-            yield values, np.int64(example["target"])
-
-    return tf.data.Dataset.from_generator(
-        generate,
-        output_signature=(
-            tf.TensorSpec((*IMAGE_SIZE, 3), tf.float32),
-            tf.TensorSpec((), tf.int64),
-        ),
-    )
-
-
-def _combine_datasets(datasets):
-    combined = datasets[0]
-    for dataset in datasets[1:]:
-        combined = combined.concatenate(dataset)
-    return combined
-
-
 def _load_training_data(data_dir, max_per_class, seed):
     plant = _split_plantvillage_records(seed)
     plant = {
@@ -368,12 +299,12 @@ def _load_training_data(data_dir, max_per_class, seed):
         for index, (split, records) in enumerate(plant.items())
     }
     plant = _extract_plantvillage(plant, data_dir)
-    beans, cifar = _load_hf_datasets(max_per_class, seed)
-
+    source_label_counts = {
+        split: dict(Counter(Path(image_path).parent.name for image_path, _ in records))
+        for split, records in plant.items()
+    }
     data_sources = {}
     train_labels = [label for _, label in plant["train"]]
-    train_labels.extend(beans["train"]["target"])
-    train_labels.extend(cifar["train"]["target"])
     class_counts = np.bincount(train_labels, minlength=len(CLASS_NAMES))
     if np.any(class_counts == 0):
         missing = [CLASS_NAMES[index] for index, count in enumerate(class_counts) if count == 0]
@@ -384,18 +315,25 @@ def _load_training_data(data_dir, max_per_class, seed):
         for index, count in enumerate(class_counts)
     }
 
+    split_counts = {}
     for split in ("train", "validation", "test"):
-        sources = [_plant_tf_dataset(plant[split])]
-        sources.append(_hf_tf_dataset(beans[split], "image"))
-        cifar_image_column = "img" if "img" in cifar[split].column_names else "image"
-        sources.append(_hf_tf_dataset(cifar[split], cifar_image_column))
-        data_sources[split] = _combine_datasets(sources)
+        data_sources[split] = _plant_tf_dataset(plant[split])
+        counts_by_class = np.bincount(
+            [label for _, label in plant[split]], minlength=len(CLASS_NAMES)
+        )
+        split_counts[split] = {
+            name: int(counts_by_class[index])
+            for index, name in enumerate(CLASS_NAMES)
+        }
         print(
-            f"{split}: PlantVillage={len(plant[split])}, Beans={len(beans[split])}, "
-            f"CIFAR-10={len(cifar[split])}",
+            f"{split}: {len(plant[split])} PlantVillage images; "
+            + ", ".join(
+                f"{name}={split_counts[split][name]}"
+                for index, name in enumerate(CLASS_NAMES)
+            ),
             flush=True,
         )
-    return data_sources, class_weights
+    return data_sources, class_weights, split_counts, source_label_counts
 
 
 def _build_model():
@@ -412,6 +350,7 @@ def _build_model():
         input_shape=(*IMAGE_SIZE, 3),
         include_top=False,
         weights="imagenet",
+        name="mobilenetv2_backbone",
     )
     base.trainable = False
 
@@ -430,33 +369,57 @@ def _build_model():
     return model
 
 
-def _print_test_metrics(model, test_dataset):
+def _test_metrics(model, test_dataset):
     true_labels = np.concatenate([labels.numpy() for _, labels in test_dataset])
     predictions = np.argmax(model.predict(test_dataset, verbose=0), axis=1)
     confusion = np.zeros((len(CLASS_NAMES), len(CLASS_NAMES)), dtype=np.int64)
     np.add.at(confusion, (true_labels, predictions), 1)
     accuracy = np.trace(confusion) / max(int(confusion.sum()), 1)
-    print(f"Test accuracy: {accuracy:.4f}")
-    print("Class                         Precision  Recall")
+    per_class = {}
     for index, name in enumerate(CLASS_NAMES):
         true_positive = confusion[index, index]
         precision = true_positive / max(int(confusion[:, index].sum()), 1)
         recall = true_positive / max(int(confusion[index, :].sum()), 1)
-        print(f"{name:<29} {precision:>9.4f} {recall:>7.4f}")
-    print("Confusion matrix (rows=true, columns=predicted):")
-    print(confusion)
+        f1_score = (
+            2 * precision * recall / (precision + recall)
+            if precision + recall
+            else 0.0
+        )
+        per_class[name] = {
+            "precision": float(precision),
+            "recall": float(recall),
+            "f1_score": float(f1_score),
+            "support": int(confusion[index, :].sum()),
+        }
+    return {
+        "accuracy": float(accuracy),
+        "macro_precision": float(np.mean([row["precision"] for row in per_class.values()])),
+        "macro_recall": float(np.mean([row["recall"] for row in per_class.values()])),
+        "macro_f1_score": float(np.mean([row["f1_score"] for row in per_class.values()])),
+        "per_class": per_class,
+        "confusion_matrix": confusion.tolist(),
+    }
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--epochs", type=int, default=8)
+    parser.add_argument("--fine-tune-epochs", type=int, default=4)
     parser.add_argument("--batch-size", type=int, default=32)
     parser.add_argument("--max-per-class", type=int, default=1500,
                         help="Maximum examples per class and split; use 0 for all available images")
     parser.add_argument("--data-dir", default=None, help="Local cache for selected PlantVillage images")
     args = parser.parse_args()
-    if args.epochs < 1 or args.batch_size < 1 or args.max_per_class < 0:
-        parser.error("--epochs and --batch-size must be positive; --max-per-class cannot be negative")
+    if (
+        args.epochs < 1
+        or args.fine_tune_epochs < 0
+        or args.batch_size < 1
+        or args.max_per_class < 0
+    ):
+        parser.error(
+            "--epochs and --batch-size must be positive; --fine-tune-epochs "
+            "and --max-per-class cannot be negative"
+        )
 
     tf.keras.utils.set_random_seed(42)
     for gpu in tf.config.list_physical_devices("GPU"):
@@ -464,15 +427,24 @@ def main():
 
     data_dir = args.data_dir or str(Path.home() / ".cache" / "cropguard")
     os.makedirs(data_dir, exist_ok=True)
-    datasets, class_weights = _load_training_data(data_dir, args.max_per_class, seed=42)
+    datasets, class_weights, split_counts, source_label_counts = _load_training_data(
+        data_dir, args.max_per_class, seed=42
+    )
     train_dataset = (
         datasets["train"]
         .shuffle(1024, seed=42, reshuffle_each_iteration=True)
         .batch(args.batch_size)
+        .repeat()
         .prefetch(1)
     )
-    validation_dataset = datasets["validation"].batch(args.batch_size).prefetch(1)
+    validation_dataset = (
+        datasets["validation"].batch(args.batch_size).repeat().prefetch(1)
+    )
     test_dataset = datasets["test"].batch(args.batch_size).prefetch(1)
+    steps_per_epoch = math.ceil(sum(split_counts["train"].values()) / args.batch_size)
+    validation_steps = math.ceil(
+        sum(split_counts["validation"].values()) / args.batch_size
+    )
 
     model = _build_model()
     os.makedirs(os.path.dirname(Config.MODEL_PATH), exist_ok=True)
@@ -484,21 +456,133 @@ def main():
             Config.MODEL_PATH, monitor="val_loss", save_best_only=True
         ),
     ]
-    model.fit(
+    history = model.fit(
         train_dataset,
         validation_data=validation_dataset,
+        steps_per_epoch=steps_per_epoch,
+        validation_steps=validation_steps,
         epochs=args.epochs,
         callbacks=callbacks,
         class_weight=class_weights,
         shuffle=False,
     )
-    _print_test_metrics(model, test_dataset)
+    training_history = {
+        key: [float(value) for value in values]
+        for key, values in history.history.items()
+    }
+    initial_best_weights = model.get_weights()
+    initial_validation_loss = model.evaluate(
+        validation_dataset, steps=validation_steps, verbose=0
+    )[0]
+    fine_tuned_validation_loss = None
+    fine_tuning_selected = False
+
+    if args.fine_tune_epochs:
+        backbone = model.get_layer("mobilenetv2_backbone")
+        backbone.trainable = True
+        for layer in backbone.layers[:-30]:
+            layer.trainable = False
+        for layer in backbone.layers:
+            if isinstance(layer, tf.keras.layers.BatchNormalization):
+                layer.trainable = False
+
+        model.compile(
+            optimizer=tf.keras.optimizers.Adam(learning_rate=1e-5),
+            loss="sparse_categorical_crossentropy",
+            metrics=["accuracy"],
+        )
+        fine_tune_history = model.fit(
+            train_dataset,
+            validation_data=validation_dataset,
+            steps_per_epoch=steps_per_epoch,
+            validation_steps=validation_steps,
+            epochs=args.fine_tune_epochs,
+            callbacks=[
+                tf.keras.callbacks.EarlyStopping(
+                    monitor="val_loss", patience=2, restore_best_weights=True
+                ),
+                tf.keras.callbacks.ModelCheckpoint(
+                    Config.MODEL_PATH, monitor="val_loss", save_best_only=True
+                ),
+            ],
+            class_weight=class_weights,
+            shuffle=False,
+        )
+        for key, values in fine_tune_history.history.items():
+            training_history.setdefault(key, []).extend(
+                float(value) for value in values
+            )
+        fine_tuned_validation_loss = model.evaluate(
+            validation_dataset, steps=validation_steps, verbose=0
+        )[0]
+        if fine_tuned_validation_loss <= initial_validation_loss:
+            fine_tuning_selected = True
+        else:
+            model.set_weights(initial_best_weights)
+
+    model.save(Config.MODEL_PATH)
+    metrics = _test_metrics(model, test_dataset)
 
     os.makedirs(os.path.dirname(Config.CLASS_INDEX_PATH), exist_ok=True)
     with open(Config.CLASS_INDEX_PATH, "w", encoding="utf-8") as class_file:
         json.dump({str(index): name for index, name in enumerate(CLASS_NAMES)}, class_file, indent=2)
+
+    report_path = Path(Config.MODEL_PATH).with_name("training_report.json")
+    report = {
+        "dataset": "PlantVillage color images",
+        "dataset_url": "https://huggingface.co/datasets/mohanty/PlantVillage",
+        "dataset_revision": PLANTVILLAGE_REVISION,
+        "dataset_license": "CC-BY-SA-3.0",
+        "created_at_utc": datetime.now(timezone.utc).isoformat(),
+        "seed": 42,
+        "image_size": list(IMAGE_SIZE),
+        "max_per_class_per_split": args.max_per_class,
+        "epochs_requested": args.epochs,
+        "fine_tune_epochs_requested": args.fine_tune_epochs,
+        "batch_size": args.batch_size,
+        "architecture": "MobileNetV2 ImageNet transfer learning",
+        "fine_tuning": {
+            "top_backbone_layers": 30,
+            "batch_normalization_layers_frozen": True,
+            "selected_by_validation_loss": fine_tuning_selected,
+            "validation_loss_before": float(initial_validation_loss),
+            "validation_loss_after": (
+                float(fine_tuned_validation_loss)
+                if fine_tuned_validation_loss is not None
+                else None
+            ),
+        },
+        "optimizer": "Adam",
+        "learning_rate": 1e-4,
+        "class_weighted_loss": True,
+        "class_names": CLASS_NAMES,
+        "leaf_group_leakage_check": "passed",
+        "source_label_counts": source_label_counts,
+        "training_history": training_history,
+        "split_counts": split_counts,
+        "test_metrics": metrics,
+        "model_path": str(Config.MODEL_PATH),
+        "class_index_path": str(Config.CLASS_INDEX_PATH),
+    }
+    with report_path.open("w", encoding="utf-8") as report_file:
+        json.dump(report, report_file, indent=2)
+
+    print(f"Test accuracy: {metrics['accuracy']:.4f}")
+    print(f"Macro precision: {metrics['macro_precision']:.4f}")
+    print(f"Macro recall: {metrics['macro_recall']:.4f}")
+    print(f"Macro F1: {metrics['macro_f1_score']:.4f}")
+    print("Per-class metrics:")
+    for name, row in metrics["per_class"].items():
+        print(
+            f"  {name}: precision={row['precision']:.4f}, "
+            f"recall={row['recall']:.4f}, f1={row['f1_score']:.4f}, "
+            f"support={row['support']}"
+        )
+    print("Confusion matrix (rows=true, columns=predicted):")
+    print(np.asarray(metrics["confusion_matrix"]))
     print(f"Saved model to {Config.MODEL_PATH}")
     print(f"Saved class mapping to {Config.CLASS_INDEX_PATH}")
+    print(f"Saved training report to {report_path}")
 
 
 if __name__ == "__main__":
