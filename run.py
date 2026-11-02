@@ -5,15 +5,66 @@ Usage (from the project root, inside your virtualenv):
 
     flask --app run.py init-db          # create all tables from the models
     flask --app run.py seed-demo-data   # insert sample diseases + demo users
+    flask --app run.py sync-maize-classes  # migrate an existing disease library safely
     flask --app run.py run              # start the dev server
     python run.py                       # (equivalent) start the dev server
 """
 import click
 from app import create_app
 from app.extensions import db
-from app.models import User, DiseaseClass, TreatmentGuide, Role
+from app.models import (
+    User,
+    DiseaseClass,
+    PredictionRecord,
+    TrainingImage,
+    TreatmentGuide,
+    Role,
+)
 
 app = create_app()
+
+MAIZE_CLASSES = [
+    (
+        "Healthy",
+        "Maize",
+        "No visible disease symptoms on the leaf.",
+        0,
+        None,
+    ),
+    (
+        "Maize Leaf Blight",
+        "Maize",
+        "Northern leaf blight can cause long, cigar-shaped lesions on maize leaves.",
+        1,
+        (
+            "Confirm symptoms with a local agricultural extension specialist before treatment.",
+            "Scout fields and remove or manage infected crop residue where locally recommended.",
+            "Use locally adapted resistant varieties and follow local disease-management guidance.",
+        ),
+    ),
+    (
+        "Maize Common Rust",
+        "Maize",
+        "Common rust may appear as raised reddish-brown pustules on maize leaves.",
+        2,
+        (
+            "Confirm symptoms with a local agricultural extension specialist before treatment.",
+            "Monitor disease development and follow locally approved integrated pest-management guidance.",
+            "Use locally adapted resistant varieties and consult local guidance on planting practices.",
+        ),
+    ),
+    (
+        "Maize Gray Leaf Spot",
+        "Maize",
+        "Gray leaf spot may produce elongated rectangular lesions bounded by leaf veins.",
+        3,
+        (
+            "Confirm symptoms with a local agricultural extension specialist before treatment.",
+            "Manage crop residue and rotation according to local agronomic recommendations.",
+            "Use locally adapted resistant varieties and follow local disease-management guidance.",
+        ),
+    ),
+]
 
 
 @app.cli.command("init-db")
@@ -29,30 +80,7 @@ def seed_demo_data():
     account per role (admin / researcher / farmer) so the system is
     explorable immediately after setup."""
     if DiseaseClass.query.count() == 0:
-        diseases = [
-            ("Healthy", "Maize", "No visible disease symptoms.", 0, None),
-            ("Maize Leaf Blight", "Maize", "Long, cigar-shaped grey-green lesions on leaves.", 1,
-             ("Apply a registered fungicide (e.g. strobilurin-based) at early symptom onset; "
-              "remove and destroy heavily infected leaves.",
-              "Rotate maize with a non-host crop for at least one season.",
-              "Use resistant maize varieties and avoid overhead irrigation late in the day.")),
-            ("Maize Common Rust", "Maize", "Small, reddish-brown pustules on both leaf surfaces.", 2,
-             ("Apply a triazole or strobilurin fungicide when pustules first appear.",
-              "Scout fields weekly during humid periods.",
-              "Plant rust-tolerant hybrids and ensure adequate plant spacing.")),
-            ("Tomato Early Blight", "Tomato", "Dark concentric-ringed spots on older leaves.", 3,
-             ("Remove infected lower leaves and apply a chlorothalonil-based fungicide every 7-10 days.",
-              "Stake plants to improve airflow.",
-              "Mulch around the base and avoid wetting foliage when watering.")),
-            ("Tomato Late Blight", "Tomato", "Water-soaked lesions turning brown/black, spreading fast.", 4,
-             ("Apply a copper-based or systemic fungicide immediately; remove severely infected plants.",
-              "Increase row spacing to reduce humidity.",
-              "Use certified disease-free seedlings and avoid overhead irrigation.")),
-            ("Bean Angular Leaf Spot", "Bean", "Angular brown lesions bound by leaf veins.", 5,
-             ("Apply a copper-based bactericide/fungicide at first sign of lesions.",
-              "Avoid working in fields when leaves are wet.",
-              "Rotate with non-legume crops and use certified clean seed.")),
-        ]
+        diseases = MAIZE_CLASSES
         for name, crop, desc, idx, guide in diseases:
             d = DiseaseClass(name=name, crop_type=crop, description=desc, model_output_index=idx)
             db.session.add(d)
@@ -83,6 +111,63 @@ def seed_demo_data():
         db.session.add(user)
     db.session.commit()
     click.echo("Demo accounts ready: farmer1/Farmer123!  researcher1/Research123!  admin1/Admin123!")
+
+
+@app.cli.command("sync-maize-classes")
+def sync_maize_classes():
+    """Keep only maize diagnosis classes without deleting linked history."""
+    maize_names = {disease[0] for disease in MAIZE_CLASSES}
+    removed = 0
+    preserved = 0
+
+    for disease in DiseaseClass.query.all():
+        if disease.name in maize_names:
+            continue
+        has_predictions = PredictionRecord.query.filter_by(
+            disease_class_id=disease.id
+        ).first() is not None
+        has_training_images = TrainingImage.query.filter_by(
+            disease_class_id=disease.id
+        ).first() is not None
+        if has_predictions or has_training_images:
+            disease.model_output_index = None
+            preserved += 1
+            click.echo(
+                f"Preserving {disease.name}: linked prediction or training-image records exist."
+            )
+            continue
+        if disease.treatment_guide is not None:
+            db.session.delete(disease.treatment_guide)
+        db.session.delete(disease)
+        removed += 1
+
+    for disease in DiseaseClass.query.all():
+        disease.model_output_index = None
+    db.session.flush()
+
+    for name, crop, description, output_index, guide in MAIZE_CLASSES:
+        disease = DiseaseClass.query.filter_by(name=name).first()
+        if disease is None:
+            disease = DiseaseClass(name=name)
+            db.session.add(disease)
+        disease.crop_type = crop
+        disease.description = description
+        disease.model_output_index = output_index
+        if guide is not None:
+            treatment, management, prevention = guide
+            treatment_guide = disease.treatment_guide
+            if treatment_guide is None:
+                treatment_guide = TreatmentGuide(disease=disease)
+                db.session.add(treatment_guide)
+            treatment_guide.treatment_text = treatment
+            treatment_guide.management_tips = management
+            treatment_guide.prevention_tips = prevention
+
+    db.session.commit()
+    click.echo(
+        f"Maize classes synchronized; removed {removed} unlinked non-maize classes "
+        f"and preserved {preserved} classes with linked history."
+    )
 
 
 if __name__ == "__main__":
