@@ -8,6 +8,8 @@ app/static/uploads/*
 !app/static/uploads/.gitkeep
 model/*.h5
 model/class_indices.json
+model/class_indices_maize*.json
+model/training_report.json
 *.db
 .pytest_cache/
 .vscode/

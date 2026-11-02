@@ -1,9 +1,9 @@
-# CropGuard — Web-Enabled Plant Disease Detection System
+# CropGuard — Maize Leaf Disease Screening System
 
 A full-stack implementation of the CropGuard system described in the project
-proposal: a Flask (Python) web application that uses a fine-tuned
-**MobileNetV2** CNN to diagnose plant leaf diseases from a photo and deliver
-treatment advice, with role-based dashboards for **farmers**, **researchers /
+proposal: a Flask (Python) web application that uses a transfer-learned
+**MobileNetV2** CNN to screen maize leaf photos for three diseases or a healthy
+class, with role-based dashboards for **farmers**, **researchers /
 agricultural officers**, and **administrators**.
 
 Stack: **Python (Flask)** backend · **Jinja2 + Bootstrap 5 + JavaScript**
@@ -40,6 +40,7 @@ cropguard/
 │   ├── static/            css/, js/, img/ (SVG illustrations), uploads/
 │   └── templates/
 ├── database/schema.sql, seed.sql
+├── notebooks/             maize data collection, BI, training & evaluation
 ├── model/                 drop your trained .h5 + class_indices.json here
 ├── tests/                 pytest unit + integration tests
 ├── run.py                 entry point + CLI bootstrap commands
@@ -147,45 +148,74 @@ per the unit/integration testing plan in proposal §3.6.
 ## 5. Plugging in the real MobileNetV2 model
 
 The app is fully runnable **without** a trained model: if
-`model/mobilenetv2_cropguard.h5` doesn't exist, `app/ml/inference.py`
+`model/mobilenetv2_cropguard_maize.h5` doesn't exist, `app/ml/inference.py`
 transparently uses a deterministic demo predictor (same photo → same
 result) so every screen, route, and database table can be exercised while
 the model is still being trained (Spiral 2/3 of the methodology).
 
-To train the supported diagnoses and an explicit reject class, run:
+The maize-only classifier recognises these PlantVillage labels:
+
+- Healthy maize leaf
+- Northern leaf blight
+- Common rust
+- Gray leaf spot
+- `Reject` (other PlantVillage crop/disease labels)
+
+To reproduce the complete business-intelligence and model workflow, open
+`notebooks/maize_cropguard_bi_model.ipynb` in VS Code and run all cells. The
+notebook documents the business objective, source and reuse terms, data
+dictionary, collection/ETL, exploratory analysis, leakage-aware split,
+training, test metrics, integration check, and deployment limitations. Install
+the notebook dependencies with `pip install -r requirements.txt` first. The
+notebook defaults to the full 1,500-image-per-class cap; reduce
+`MAX_PER_CLASS` for a quick development run.
+
+The same training workflow can be run from a terminal:
 
 ```bash
-python train_model.py --epochs 8 --batch-size 32 --max-per-class 1500
+python train_model.py --epochs 8 --fine-tune-epochs 4 --batch-size 32 --max-per-class 1500
 ```
 
-The first run fetches the selected PlantVillage images with HTTP range reads,
-plus the public Beans and CIFAR-10 datasets. PlantVillage leaves are grouped
-before the 75/12.5/12.5 train/validation/test split to avoid the same leaf
-appearing in multiple sets. Beans supplies angular leaf spot; unsupported
-apple scab, potato blights, tomato leaf mold, and CIFAR-10 objects are trained
-as `Reject`. The default cap
-keeps CPU training manageable; pass `--max-per-class 0` to use every
-available image. ImageNet-pretrained MobileNetV2 uses augmentation, class
-weights, early stopping, and best-checkpoint saving. The script prints test
-accuracy, per-class precision/recall, and a confusion matrix. Trained weights
-and class mapping are written to the paths configured in `.env`
-(`MODEL_PATH` and `CLASS_INDEX_PATH`). These artifacts are ignored by Git,
-so train them locally after cloning.
+The first run collects selected RGB images from the public
+[PlantVillage dataset](https://huggingface.co/datasets/mohanty/PlantVillage)
+with HTTP range reads, retaining the four maize classes and using other
+PlantVillage classes as `Reject`. The dataset is licensed CC-BY-SA-3.0 and is
+based on controlled leaf images; it is a benchmark, not proof of performance
+on local farm photos. The trainer deduplicates source paths, splits physical
+leaf groups into train/validation/test sets (75/12.5/12.5), and checks for
+group overlap. ImageNet-pretrained MobileNetV2 uses augmentation, class
+weights, early stopping, and fine-tunes the top 30 backbone layers while
+keeping batch-normalization layers frozen. Fine-tuning is retained only when
+validation loss improves. Test accuracy, macro precision/recall/F1, per-class
+metrics, the confusion matrix, split counts, and training history are saved
+to `model/training_report.json`. By default, model weights and class mapping
+are saved as `model/mobilenetv2_cropguard_maize.h5` and
+`model/class_indices_maize.json`; `.env` can override `MODEL_PATH` and
+`CLASS_INDEX_PATH`. Generated artifacts are ignored by Git by default; the
+validated maize model, class mapping, and evaluation report are included in
+this repository update. The previous mixed-crop model file is left untouched.
 
 The app rejects the model's `Reject` class instead of saving a diagnosis.
 The existing image-content screen is an additional guard; neither it nor a
-closed-set classifier can guarantee rejection of every possible out-of-
-distribution image, so review test-set metrics before relying on diagnoses.
+closed-set classifier can guarantee rejection of every possible out-of-distribution image. Review test-set metrics and validate on independent
+maize field photos from the intended region before relying on diagnoses.
+
+For an existing database, run `flask --app run.py sync-maize-classes` to
+update the maize classes and remove non-maize classes that have no linked
+prediction or training-image records. Linked non-maize history is preserved
+and excluded from model-output indexes. New databases seeded with
+`seed-demo-data` contain only maize diagnosis classes (the model's `Reject`
+output is not a disease-library entry).
 
 To use an independently trained compatible model instead:
 
 1. Train/fine-tune MobileNetV2 (TensorFlow/Keras) on your labelled dataset.
-2. Save the model: `model.save("model/mobilenetv2_cropguard.h5")`.
+2. Save the model: `model.save("model/mobilenetv2_cropguard_maize.h5")`.
 3. Save the label mapping so predictions map back to `DiseaseClass` rows:
    ```python
    import json
    inv_map = {v: k for k, v in train_generator.class_indices.items()}
-   json.dump(inv_map, open("model/class_indices.json", "w"))
+   json.dump(inv_map, open("model/class_indices_maize.json", "w"))
    ```
    Make sure each name matches a `DiseaseClass.name` in the database (and
    that `model_output_index` lines up), or add missing rows via the
