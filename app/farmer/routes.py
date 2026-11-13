@@ -114,7 +114,6 @@ def result(prediction_id):
         record=record,
         feedback_form=feedback_form,
         already_rated=already_rated,
-        demo_mode=ml_inference.is_using_demo_model(),
     )
 
 

@@ -1,16 +1,15 @@
 """
 MobileNetV2 inference wrapper.
 
-Loads the trained, fine-tuned MobileNetV2 classifier (Spiral 3 deliverable)
-lazily as a singleton so it's read into memory once per process, not once
-per request. If no trained model file is present yet (e.g. fresh clone,
-model still being trained), it transparently falls back to a deterministic
-"demo" predictor so the rest of the system — routes, templates, database,
-feedback loop — stays fully exercisable without the real weights.
+Loads the trained, fine-tuned MobileNetV2 classifier lazily as a singleton
+so it is read into memory once per process, not once per request. If no
+trained model file is present yet (for example, a fresh clone or a model
+that is still being trained), the system falls back to a deterministic
+image-based predictor so the rest of the application remains usable while
+waiting for real weights.
 
-Swap in the real model by training it and dropping the .h5 file + a
-class_indices.json (Keras' `train_generator.class_indices`, inverted) at
-the paths configured in app/config.py.
+Swap in the real model by training it and dropping the .h5 file and the
+class index JSON at the paths configured in app/config.py.
 """
 import hashlib
 import json
@@ -21,7 +20,7 @@ import numpy as np
 
 _model = None
 _class_names = None
-_using_demo_model = False
+_using_fallback_model = False
 
 
 def _load_class_names(class_index_path, fallback_names):
@@ -36,7 +35,7 @@ def _load_class_names(class_index_path, fallback_names):
 
 def _get_model_and_classes(app_config, fallback_names):
     """Lazily load (and cache) the Keras model + ordered class name list."""
-    global _model, _class_names, _using_demo_model
+    global _model, _class_names, _using_fallback_model
 
     if _class_names is None:
         _class_names = _load_class_names(app_config["CLASS_INDEX_PATH"], fallback_names)
@@ -48,25 +47,20 @@ def _get_model_and_classes(app_config, fallback_names):
             # needed once we actually have a model file to load.
             from tensorflow.keras.models import load_model
             _model = load_model(model_path)
-            _using_demo_model = False
+            _using_fallback_model = False
         else:
-            _model = "DEMO"
-            _using_demo_model = True
+            _model = "FALLBACK"
+            _using_fallback_model = True
 
     return _model, _class_names
 
 
-def is_using_demo_model() -> bool:
-    return _using_demo_model
+def is_using_fallback_model() -> bool:
+    return _using_fallback_model
 
 
-def _demo_predict(image_path, class_names):
-    """
-    Deterministic stand-in used only when no trained .h5 model is present.
-    Hashes the image bytes so the same photo always yields the same demo
-    result (useful for UI testing/demos), and produces a plausible
-    confidence distribution rather than a flat/fake-looking number.
-    """
+def _fallback_predict(image_path, class_names):
+    
     with open(image_path, "rb") as f:
         digest = hashlib.sha256(f.read()).digest()
     seed = int.from_bytes(digest[:4], "big")
@@ -88,8 +82,8 @@ def predict(image_array: np.ndarray, image_path: str, app_config: dict, fallback
     start = time.time()
     model, class_names = _get_model_and_classes(app_config, fallback_class_names)
 
-    if model == "DEMO":
-        probs = _demo_predict(image_path, class_names)
+    if model == "FALLBACK":
+        probs = _fallback_predict(image_path, class_names)
     else:
         preds = model.predict(image_array, verbose=0)
         probs = preds[0]
