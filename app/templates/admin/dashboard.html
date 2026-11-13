@@ -1,38 +1,151 @@
 {% extends "base.html" %}
 {% block title %}Admin dashboard{% endblock %}
 {% block content %}
-<div class="container py-4">
-  <h2 class="mb-1">System overview</h2>
-  <p class="text-muted mb-4">Account oversight and detection activity, at a glance.</p>
-
-  <div class="row g-3 mb-4">
-    <div class="col-6 col-md-4 col-lg-2"><div class="cg-stat"><div class="num">{{ stats.total_users }}</div><div class="label">Total users</div></div></div>
-    <div class="col-6 col-md-4 col-lg-2"><div class="cg-stat"><div class="num">{{ stats.total_farmers }}</div><div class="label">Farmers</div></div></div>
-    <div class="col-6 col-md-4 col-lg-2"><div class="cg-stat"><div class="num">{{ stats.total_researchers }}</div><div class="label">Researchers</div></div></div>
-    <div class="col-6 col-md-4 col-lg-2"><div class="cg-stat"><div class="num">{{ stats.pending_researchers }}</div><div class="label">Pending approval</div></div></div>
-    <div class="col-6 col-md-4 col-lg-2"><div class="cg-stat"><div class="num">{{ stats.total_predictions }}</div><div class="label">Predictions</div></div></div>
-    <div class="col-6 col-md-4 col-lg-2"><div class="cg-stat"><div class="num">{{ stats.total_diseases }}</div><div class="label">Disease classes</div></div></div>
-  </div>
-
-  <div class="row g-4">
-    <div class="col-md-6">
-      <a href="{{ url_for('admin.users') }}" class="text-decoration-none">
-        <div class="cg-card h-100 p-4">
-          <div class="card-icon mb-3"><i class="bi bi-people"></i></div>
-          <h5 class="text-dark">Manage user accounts</h5>
-          <p class="text-muted mb-0">Approve researchers, activate/deactivate or remove accounts.</p>
+<section class="cg-admin-dashboard">
+  <div class="container">
+    <div class="row align-items-center g-4 g-xl-5 cg-admin-hero">
+      <div class="col-lg-6">
+        <span class="cg-admin-eyebrow"><i class="bi bi-shield-check"></i> CropGuard control center</span>
+        <h1 class="cg-admin-title mt-3 mb-3">System overview</h1>
+        <p class="cg-admin-intro mb-4">Account oversight and detection activity, at a glance.</p>
+        <div class="d-flex flex-wrap gap-3">
+          <a href="{{ url_for('admin.users') }}" class="btn cg-admin-primary">
+            <i class="bi bi-people me-2"></i>Manage users
+          </a>
+          <a href="{{ url_for('admin.reports') }}" class="btn cg-admin-secondary">
+            <i class="bi bi-bar-chart me-2"></i>View reports
+          </a>
         </div>
-      </a>
-    </div>
-    <div class="col-md-6">
-      <a href="{{ url_for('admin.reports') }}" class="text-decoration-none">
-        <div class="cg-card h-100 p-4">
-          <div class="card-icon mb-3"><i class="bi bi-bar-chart"></i></div>
-          <h5 class="text-dark">Detection activity reports</h5>
-          <p class="text-muted mb-0">Generate and export reports summarising system usage.</p>
+      </div>
+      <div class="col-lg-6">
+        <div class="cg-admin-visual" aria-hidden="true">
+          <div class="cg-admin-visual-heading">
+            <span class="cg-admin-live-dot"></span>
+            <span>FIELD INTELLIGENCE</span>
+            <span class="ms-auto">CROPGUARD</span>
+          </div>
+          <svg class="cg-admin-orbit" viewBox="0 0 520 330" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <radialGradient id="cgFieldGlow">
+                <stop stop-color="#35D49A" stop-opacity=".24"/>
+                <stop offset="1" stop-color="#35D49A" stop-opacity="0"/>
+              </radialGradient>
+              <linearGradient id="cgFieldLine" x1="75" y1="250" x2="450" y2="78">
+                <stop stop-color="#35D49A" stop-opacity=".12"/>
+                <stop offset=".52" stop-color="#35D49A" stop-opacity=".8"/>
+                <stop offset="1" stop-color="#35D49A" stop-opacity=".16"/>
+              </linearGradient>
+            </defs>
+            <circle cx="264" cy="166" r="152" fill="url(#cgFieldGlow)"/>
+            <circle cx="264" cy="166" r="116" stroke="#35D49A" stroke-opacity=".22"/>
+            <circle cx="264" cy="166" r="86" stroke="#35D49A" stroke-opacity=".34" stroke-dasharray="3 8"/>
+            <path d="M66 242 150 194 228 219 304 159 376 183 459 96" stroke="url(#cgFieldLine)" stroke-width="2"/>
+            <path d="M103 275 183 228 261 253 337 193 409 217 480 148" stroke="#35D49A" stroke-opacity=".28"/>
+            <path d="m105 98 72 42 73-25 67 46 83-42 47 28M83 171l73 42 73-25 67 46 83-42 62 35" stroke="#35D49A" stroke-opacity=".2"/>
+            <path d="M177 140v88m73-113v113m67-67v78m83-120v109M105 98v177m302-156v98" stroke="#35D49A" stroke-opacity=".14"/>
+            <path d="M162 169c30-36 66-54 106-54s76 18 106 54c-30 36-66 54-106 54s-76-18-106-54Z" stroke="#35D49A" stroke-opacity=".72" stroke-width="2"/>
+            <path d="M193 169c19-20 45-31 75-31s56 11 75 31c-19 20-45 31-75 31s-56-11-75-31Z" fill="#35D49A" fill-opacity=".08" stroke="#35D49A" stroke-opacity=".45"/>
+            <circle cx="268" cy="169" r="15" fill="#35D49A" fill-opacity=".2" stroke="#65E4B2" stroke-width="2"/>
+            <circle cx="268" cy="169" r="5" fill="#65E4B2"/>
+            <circle cx="150" cy="194" r="5" fill="#65E4B2"/>
+            <circle cx="304" cy="159" r="5" fill="#65E4B2"/>
+            <circle cx="459" cy="96" r="5" fill="#65E4B2"/>
+            <circle cx="103" cy="275" r="4" fill="#65E4B2"/>
+            <circle cx="409" cy="217" r="4" fill="#65E4B2"/>
+          </svg>
+          <div class="cg-admin-visual-note cg-admin-visual-note-top">
+            <i class="bi bi-broadcast-pin"></i>
+            <span>Monitoring crop health</span>
+          </div>
+          <div class="cg-admin-visual-note cg-admin-visual-note-bottom">
+            <i class="bi bi-activity"></i>
+            <span>Insights for every role</span>
+          </div>
         </div>
-      </a>
+      </div>
+    </div>
+
+    <div class="cg-admin-section-heading">
+      <div>
+        <span class="cg-admin-kicker">AT A GLANCE</span>
+        <h2>Platform activity</h2>
+      </div>
+      <span class="cg-admin-section-mark"><i class="bi bi-circle-fill"></i> Live overview</span>
+    </div>
+
+    <div class="row g-3 cg-admin-stats">
+      <div class="col-6 col-md-4 col-xl-2">
+        <div class="cg-admin-stat">
+          <span class="cg-admin-stat-icon"><i class="bi bi-people"></i></span>
+          <div class="cg-admin-stat-number">{{ stats.total_users }}</div>
+          <div class="cg-admin-stat-label">Total users</div>
+        </div>
+      </div>
+      <div class="col-6 col-md-4 col-xl-2">
+        <div class="cg-admin-stat">
+          <span class="cg-admin-stat-icon"><i class="bi bi-person-workspace"></i></span>
+          <div class="cg-admin-stat-number">{{ stats.total_farmers }}</div>
+          <div class="cg-admin-stat-label">Farmers</div>
+        </div>
+      </div>
+      <div class="col-6 col-md-4 col-xl-2">
+        <div class="cg-admin-stat">
+          <span class="cg-admin-stat-icon"><i class="bi bi-mortarboard"></i></span>
+          <div class="cg-admin-stat-number">{{ stats.total_researchers }}</div>
+          <div class="cg-admin-stat-label">Researchers</div>
+        </div>
+      </div>
+      <div class="col-6 col-md-4 col-xl-2">
+        <div class="cg-admin-stat">
+          <span class="cg-admin-stat-icon"><i class="bi bi-person-check"></i></span>
+          <div class="cg-admin-stat-number">{{ stats.pending_researchers }}</div>
+          <div class="cg-admin-stat-label">Pending approval</div>
+        </div>
+      </div>
+      <div class="col-6 col-md-4 col-xl-2">
+        <div class="cg-admin-stat">
+          <span class="cg-admin-stat-icon"><i class="bi bi-activity"></i></span>
+          <div class="cg-admin-stat-number">{{ stats.total_predictions }}</div>
+          <div class="cg-admin-stat-label">Predictions</div>
+        </div>
+      </div>
+      <div class="col-6 col-md-4 col-xl-2">
+        <div class="cg-admin-stat">
+          <span class="cg-admin-stat-icon"><i class="bi bi-flower1"></i></span>
+          <div class="cg-admin-stat-number">{{ stats.total_diseases }}</div>
+          <div class="cg-admin-stat-label">Disease classes</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="cg-admin-section-heading cg-admin-shortcuts-heading">
+      <div>
+        <span class="cg-admin-kicker">QUICK ACCESS</span>
+        <h2>Workspace shortcuts</h2>
+      </div>
+    </div>
+    <div class="row g-3">
+      <div class="col-md-6">
+        <a href="{{ url_for('admin.users') }}" class="cg-admin-action">
+          <span class="cg-admin-action-icon"><i class="bi bi-people"></i></span>
+          <span class="cg-admin-action-copy">
+            <strong>Manage user accounts</strong>
+            <span>Approve researchers, activate or deactivate accounts, and manage users.</span>
+          </span>
+          <i class="bi bi-arrow-up-right cg-admin-action-arrow"></i>
+        </a>
+      </div>
+      <div class="col-md-6">
+        <a href="{{ url_for('admin.reports') }}" class="cg-admin-action">
+          <span class="cg-admin-action-icon"><i class="bi bi-bar-chart-line"></i></span>
+          <span class="cg-admin-action-copy">
+            <strong>Detection activity reports</strong>
+            <span>Generate and export reports summarising system usage.</span>
+          </span>
+          <i class="bi bi-arrow-up-right cg-admin-action-arrow"></i>
+        </a>
+      </div>
     </div>
   </div>
-</div>
+</section>
 {% endblock %}
